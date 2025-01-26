@@ -29,46 +29,46 @@ A Discord bot that generates messages using a Markov chain based on chat history
 
 ### Create a Discord Application and Bot
 
->1. **Create a Discord Application**:
->    - Go to the [Discord Developer Portal](https://discord.com/developers/applications).
->    - Click on "New Application" and give it a name.
->
->2. **Add a Bot to the Application**:
->    - In your application's settings, navigate to the "Bot" tab.
->    - Click "Add Bot" and confirm.
->    - Copy the **Bot Token**.❗❗**Do not share this token**❗❗.
->
->3. **Set Bot Permissions**:
->    - Under the "OAuth2" tab, navigate to "URL Generator".
->    - Select the following scopes:
->        - `bot`
->    - Under "Bot Permissions", select:
->        - `Send Messages`
->        - `Read Message History`
->        - `Manage Messages` (if needed for flushing data)
->    - Use the generated URL to invite the bot to your Discord server.
+1. **Create a Discord Application**:
+    - Go to the [Discord Developer Portal](https://discord.com/developers/applications).
+    - Click on "New Application" and give it a name.
+
+2. **Add a Bot to the Application**:
+    - In your application's settings, navigate to the "Bot" tab.
+    - Click "Add Bot" and confirm.
+    - Copy the **Bot Token**.❗❗**Do not share this token**❗❗.
+
+3. **Set Bot Permissions**:
+    - Under the "OAuth2" tab, navigate to "URL Generator".
+    - Select the following scopes:
+        - `bot`
+    - Under "Bot Permissions", select:
+        - `Send Messages`
+        - `Read Message History`
+        - `Manage Messages` (if needed for flushing data)
+    - Use the generated URL to invite the bot to your Discord server.
 
 ### Starting the Bot
 
->1. Clone the repository.
->2. Install dependencies.
->
->     ```bash
->     pip install -r requirements.txt
->     ```
->
->3. Configure the bot token.
->
->    - Make a `config.json` file in the project's directory with the following structure:
->
->        ```json
->        {
->            "token": "{your actual token}"
->        }
->        ```
->
->4. Run ``__main.py__``. If you're hosting this yourself I'm assuming you know how to run it detached. If not then look it up.
->5. Invite the bot to your server.
+1. Clone the repository.
+2. Install dependencies.
+
+     ```bash
+      pip install -r requirements.txt
+     ```
+
+3. Configure the bot token.
+
+    - Make a `config.json` file in the project's directory with the following structure:
+
+        ```json
+        {
+            "token": "{your actual token}"
+        }
+        ```
+
+4. Run ``__main.py__``. If you're hosting this yourself I'm assuming you know how to run it detached. If not then look it up (and please set up a virtual environment).
+5. Invite the bot to your server.
 
 ## License
 
