@@ -10,6 +10,12 @@ A Discord bot that generates messages using a Markov chain based on chat history
 - Commands to enable/disable the bot in a channel.
 - Flush chat history data.
 
+## TO-DO
+
+- [ ] Let the bot parse emojis properly
+- [ ] Give the bot more admin settings to disable posting links or emojis
+- [ ] Make the generate command shorter
+
 ## Commands
 
 - `/enable` - Enable the bot in the current channel.
