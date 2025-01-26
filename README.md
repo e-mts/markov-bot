@@ -1,6 +1,6 @@
 # Discord Markov Chain Bot
 
-A Discord bot that generates messages using a Markov chain based on chat history. This bot supports slash commands. Inspire by Eliza (RIP).
+A Discord bot that generates messages using a Markov chain based on chat history. This bot supports slash commands. Inspired by Eliza (RIP).
 
 > Note: this is a funny side project, the bot records messages in `data/channel_data.json` (unidentified) and `data/user_data.json` (identified). Don't use this for weird stuff.
 
