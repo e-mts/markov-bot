@@ -34,6 +34,8 @@ A Discord bot that generates messages using a Markov chain based on chat history
 
   > 💡 The bot will only record messages to history while this option is on.
 
+  > Settings commands require `Administrator` or `Manage Server`.
+
 - `/settings disable channel` - Disable the bot in the current channel.
 - `/settings disable server` - Disable the bot in all text channels.
   

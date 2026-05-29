@@ -198,6 +198,18 @@ def user_chain_key(guild_id: int, user_id: int) -> str:
     return f"user:{guild_id}:{user_id}"
 
 
+def can_manage_settings(interaction: discord.Interaction) -> bool:
+    permissions = interaction.permissions
+    if permissions.administrator or permissions.manage_guild:
+        return True
+
+    raise app_commands.MissingPermissions(["administrator", "manage_guild"])
+
+
+def settings_permissions_check():
+    return app_commands.check(can_manage_settings)
+
+
 async def reply(
     interaction: discord.Interaction,
     message: str,
@@ -225,7 +237,7 @@ class EnableSettingsCommands(app_commands.Group):
         super().__init__(name="enable", description="Enable bot functionality")
 
     @app_commands.command(name="channel", description="Enable the bot in the current channel")
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def channel(self, interaction: discord.Interaction):
         bot_name = interaction.client.user.name  # type: ignore[union-attr]
@@ -239,7 +251,7 @@ class DisableSettingsCommands(app_commands.Group):
         super().__init__(name="disable", description="Disable bot functionality")
 
     @app_commands.command(name="channel", description="Disable the bot in the current channel")
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def channel(self, interaction: discord.Interaction):
         bot_name = interaction.client.user.name  # type: ignore[union-attr]
@@ -248,7 +260,7 @@ class DisableSettingsCommands(app_commands.Group):
         await reply(interaction, f"{bot_name} has been disabled in this channel.")
 
     @app_commands.command(name="server", description="Disable the bot in all text channels")
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def server(self, interaction: discord.Interaction):
         if interaction.guild is None:
@@ -267,7 +279,7 @@ class FlushSettingsCommands(app_commands.Group):
         super().__init__(name="flush", description="Flush bot memories")
 
     @app_commands.command(name="channel", description="Flush memories for the current channel")
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def channel(self, interaction: discord.Interaction):
         bot.data_handler.flush_channel(interaction.channel_id)
@@ -275,7 +287,7 @@ class FlushSettingsCommands(app_commands.Group):
         await reply(interaction, "Flushed all memories for this channel.", ephemeral=True)
 
     @app_commands.command(name="all", description="Flush all bot memories")
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def all(self, interaction: discord.Interaction):
         bot.data_handler.flush_all()
@@ -288,7 +300,7 @@ class WordFilterSettingsCommands(app_commands.Group):
         super().__init__(name="word-filter", description="Configure filtered words")
 
     @app_commands.command(name="show", description="Show filtered words for generated output")
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def show(self, interaction: discord.Interaction):
         settings = bot.get_guild_settings(interaction.guild_id)
@@ -298,7 +310,7 @@ class WordFilterSettingsCommands(app_commands.Group):
 
     @app_commands.command(name="add", description="Add words or phrases to the output filter")
     @app_commands.describe(words="Comma-separated words or phrases to filter.")
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def add(self, interaction: discord.Interaction, words: str):
         settings = bot.get_guild_settings(interaction.guild_id)
@@ -310,7 +322,7 @@ class WordFilterSettingsCommands(app_commands.Group):
 
     @app_commands.command(name="remove", description="Remove words or phrases from the output filter")
     @app_commands.describe(words="Comma-separated words or phrases to remove.")
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def remove(self, interaction: discord.Interaction, words: str):
         settings = bot.get_guild_settings(interaction.guild_id)
@@ -321,7 +333,7 @@ class WordFilterSettingsCommands(app_commands.Group):
         await reply(interaction, format_settings(settings), ephemeral=True)
 
     @app_commands.command(name="clear", description="Clear the word filter")
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def clear_words(self, interaction: discord.Interaction):
         settings = bot.get_guild_settings(interaction.guild_id)
@@ -335,7 +347,7 @@ class SettingsCommands(app_commands.Group):
         super().__init__(
             name="settings",
             description="Configure bot settings",
-            default_permissions=discord.Permissions(administrator=True),
+            default_permissions=discord.Permissions(manage_guild=True),
         )
         self.add_command(EnableSettingsCommands())
         self.add_command(DisableSettingsCommands())
@@ -343,7 +355,7 @@ class SettingsCommands(app_commands.Group):
         self.add_command(WordFilterSettingsCommands())
 
     @app_commands.command(name="show", description="Show this server's output settings")
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def show(self, interaction: discord.Interaction):
         settings = bot.get_guild_settings(interaction.guild_id)
@@ -361,7 +373,7 @@ class SettingsCommands(app_commands.Group):
         role_mentions="Allow generated messages to mention roles.",
         everyone_mentions="Allow generated messages to use @here or @everyone.",
     )
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def pings(
         self,
@@ -409,7 +421,7 @@ class SettingsCommands(app_commands.Group):
         links="Allow generated messages to include links.",
         emojis="Allow generated messages to include custom or Unicode emojis.",
     )
-    @app_commands.checks.has_permissions(administrator=True)
+    @settings_permissions_check()
     @app_commands.guild_only()
     async def output(
         self,
@@ -527,7 +539,7 @@ class MarkovBot(discord.Client):
         if isinstance(error, app_commands.MissingPermissions):
             await reply(
                 interaction,
-                "You need administrator permissions to use this command.",
+                "You need Administrator or Manage Server permissions to use this command.",
                 ephemeral=True,
             )
             return

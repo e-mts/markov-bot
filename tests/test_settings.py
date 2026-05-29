@@ -2,6 +2,7 @@ import importlib.util
 import os
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 os.environ.setdefault("DISCORD_TOKEN", "test-token")
@@ -73,6 +74,20 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(allowed_mentions.everyone)
         self.assertFalse(allowed_mentions.replied_user)
 
+    def test_settings_permissions_allow_admin_or_manage_server(self):
+        admin_interaction = SimpleNamespace(
+            permissions=bot_main.discord.Permissions(administrator=True)
+        )
+        manager_interaction = SimpleNamespace(
+            permissions=bot_main.discord.Permissions(manage_guild=True)
+        )
+        regular_interaction = SimpleNamespace(permissions=bot_main.discord.Permissions())
+
+        self.assertTrue(bot_main.can_manage_settings(admin_interaction))
+        self.assertTrue(bot_main.can_manage_settings(manager_interaction))
+        with self.assertRaises(bot_main.app_commands.MissingPermissions):
+            bot_main.can_manage_settings(regular_interaction)
+
     def test_settings_commands_split_pings_from_output(self):
         client = bot_main.MarkovBot()
         settings_command = next(
@@ -87,7 +102,7 @@ class SettingsTests(unittest.TestCase):
         )
         self.assertEqual(
             settings_command.to_dict(client.tree)["default_member_permissions"],
-            bot_main.discord.Permissions(administrator=True).value,
+            bot_main.discord.Permissions(manage_guild=True).value,
         )
 
         pings_command = next(
