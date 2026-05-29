@@ -104,24 +104,38 @@ class DataHandler:
             ]
         self._write_json(self.user_file, user_data)
 
-    def add_user_message(self, user_id, channel_id, message, timestamp=None):
+    def add_user_message(
+        self,
+        user_id,
+        channel_id,
+        message,
+        timestamp=None,
+        guild_id=None,
+    ):
         data = self._read_json(self.user_file)
         str_id = str(user_id)
         if str_id not in data:
             data[str_id] = []
-        data[str_id].append(
-            {
-                "channel_id": str(channel_id),
-                "message": message,
-                "timestamp": self._normalize_timestamp(timestamp),
-            }
-        )
+        record = {
+            "channel_id": str(channel_id),
+            "message": message,
+            "timestamp": self._normalize_timestamp(timestamp),
+        }
+        if guild_id is not None:
+            record["guild_id"] = str(guild_id)
+        data[str_id].append(record)
         self._write_json(self.user_file, data)
 
-    def get_user_data(self, user_id):
+    def get_user_data(self, user_id, guild_id=None):
         data = self._read_json(self.user_file)
         messages = []
         for record in data.get(str(user_id), []):
+            if guild_id is not None:
+                if not isinstance(record, dict):
+                    continue
+                if str(record.get("guild_id")) != str(guild_id):
+                    continue
+
             message = self._message_from_record(record)
             if message:
                 messages.append(message)

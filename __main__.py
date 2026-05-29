@@ -21,14 +21,18 @@ DISCORD_MESSAGE_LIMIT = 2000
 MAX_GENERATION_RETRIES = 10
 
 DEFAULT_GUILD_SETTINGS = {
-    "allow_mentions": False,
+    "allow_user_mentions": False,
+    "allow_role_mentions": False,
+    "allow_everyone_mentions": False,
     "allow_links": True,
     "allow_emojis": True,
     "banned_words": [],
 }
 
 URL_PATTERN = re.compile(r"(?:https?://|www\.|discord\.gg/)", re.IGNORECASE)
-MENTION_PATTERN = re.compile(r"<@!?\d+>|<@&\d+>|@everyone|@here", re.IGNORECASE)
+USER_MENTION_PATTERN = re.compile(r"<@!?\d+>")
+ROLE_MENTION_PATTERN = re.compile(r"<@&\d+>")
+EVERYONE_MENTION_PATTERN = re.compile(r"@everyone|@here", re.IGNORECASE)
 CUSTOM_EMOJI_PATTERN = re.compile(r"<a?:[A-Za-z0-9_]+:\d+>")
 UNICODE_EMOJI_PATTERN = re.compile(
     "["
@@ -57,6 +61,13 @@ def load_config() -> dict[str, str]:
     raise RuntimeError("Set DISCORD_TOKEN or create config.json with a token.")
 
 
+def write_json_atomic(file: Path, data: Any):
+    temp_file = file.with_suffix(f"{file.suffix}.tmp")
+    with open(temp_file, "w") as f:
+        json.dump(data, f, indent=4)
+    os.replace(temp_file, file)
+
+
 config = load_config()
 
 intents = discord.Intents.default()
@@ -82,7 +93,18 @@ def normalize_guild_settings(settings: Optional[dict[str, Any]]) -> dict[str, An
     if not isinstance(settings, dict):
         return normalized
 
-    for key in ("allow_mentions", "allow_links", "allow_emojis"):
+    legacy_allow_mentions = settings.get("allow_mentions")
+    for key in (
+        "allow_user_mentions",
+        "allow_role_mentions",
+        "allow_everyone_mentions",
+    ):
+        if key in settings:
+            normalized[key] = bool(settings[key])
+        elif legacy_allow_mentions is not None:
+            normalized[key] = bool(legacy_allow_mentions)
+
+    for key in ("allow_links", "allow_emojis"):
         if key in settings:
             normalized[key] = bool(settings[key])
 
@@ -117,7 +139,9 @@ def format_settings(settings: dict[str, Any]) -> str:
     banned_words = settings["banned_words"]
     banlist = ", ".join(banned_words) if banned_words else "none"
     return (
-        f"Mentions: {setting_state(settings['allow_mentions'])}\n"
+        f"User mentions: {setting_state(settings['allow_user_mentions'])}\n"
+        f"Role mentions: {setting_state(settings['allow_role_mentions'])}\n"
+        f"@here/@everyone: {setting_state(settings['allow_everyone_mentions'])}\n"
         f"Links: {setting_state(settings['allow_links'])}\n"
         f"Emojis: {setting_state(settings['allow_emojis'])}\n"
         f"Banlist: {banlist}"
@@ -144,8 +168,12 @@ def contains_banned_word(message: str, banned_words: list[str]) -> bool:
 
 def filter_reasons(message: str, settings: dict[str, Any]) -> list[str]:
     reasons = []
-    if not settings["allow_mentions"] and MENTION_PATTERN.search(message):
-        reasons.append("mentions")
+    if not settings["allow_user_mentions"] and USER_MENTION_PATTERN.search(message):
+        reasons.append("user mentions")
+    if not settings["allow_role_mentions"] and ROLE_MENTION_PATTERN.search(message):
+        reasons.append("role mentions")
+    if not settings["allow_everyone_mentions"] and EVERYONE_MENTION_PATTERN.search(message):
+        reasons.append("@here/@everyone")
     if not settings["allow_links"] and URL_PATTERN.search(message):
         reasons.append("links")
     if not settings["allow_emojis"] and (
@@ -158,9 +186,16 @@ def filter_reasons(message: str, settings: dict[str, Any]) -> list[str]:
 
 
 def allowed_mentions_for(settings: dict[str, Any]) -> discord.AllowedMentions:
-    if settings["allow_mentions"]:
-        return discord.AllowedMentions.all()
-    return discord.AllowedMentions.none()
+    return discord.AllowedMentions(
+        everyone=settings["allow_everyone_mentions"],
+        users=settings["allow_user_mentions"],
+        roles=settings["allow_role_mentions"],
+        replied_user=False,
+    )
+
+
+def user_chain_key(guild_id: int, user_id: int) -> str:
+    return f"user:{guild_id}:{user_id}"
 
 
 async def reply(
@@ -310,9 +345,17 @@ class SettingsCommands(app_commands.Group):
         settings = bot.get_guild_settings(interaction.guild_id)
         await reply(interaction, format_settings(settings), ephemeral=True)
 
-    @app_commands.command(name="output", description="Toggle mentions, links, or emojis in generated output")
+    @app_commands.command(name="output", description="Toggle generated output filters")
+    @app_commands.rename(
+        user_mentions="users",
+        role_mentions="roles",
+        everyone_mentions="everyone",
+    )
     @app_commands.describe(
-        mentions="Allow generated messages to mention users, roles, @here, or @everyone.",
+        mentions="Allow or block all generated pings at once.",
+        user_mentions="Allow generated messages to mention users.",
+        role_mentions="Allow generated messages to mention roles.",
+        everyone_mentions="Allow generated messages to use @here or @everyone.",
         links="Allow generated messages to include links.",
         emojis="Allow generated messages to include custom or Unicode emojis.",
     )
@@ -322,17 +365,39 @@ class SettingsCommands(app_commands.Group):
         self,
         interaction: discord.Interaction,
         mentions: Optional[bool] = None,
+        user_mentions: Optional[bool] = None,
+        role_mentions: Optional[bool] = None,
+        everyone_mentions: Optional[bool] = None,
         links: Optional[bool] = None,
         emojis: Optional[bool] = None,
     ):
         settings = bot.get_guild_settings(interaction.guild_id)
         updates = {
-            "allow_mentions": mentions,
             "allow_links": links,
             "allow_emojis": emojis,
         }
 
         changed = False
+        if mentions is not None:
+            for key in (
+                "allow_user_mentions",
+                "allow_role_mentions",
+                "allow_everyone_mentions",
+            ):
+                settings[key] = mentions
+            changed = True
+
+        mention_updates = {
+            "allow_user_mentions": user_mentions,
+            "allow_role_mentions": role_mentions,
+            "allow_everyone_mentions": everyone_mentions,
+        }
+
+        for key, value in mention_updates.items():
+            if value is not None:
+                settings[key] = value
+                changed = True
+
         for key, value in updates.items():
             if value is not None:
                 settings[key] = value
@@ -476,16 +541,14 @@ class MarkovBot(discord.Client):
         self.save_settings()
 
     def save_settings(self):
-        with open(SETTINGS_FILE, "w") as f:
-            json.dump(
-                {
-                    "enabled_channels": list(self.enabled_channels),
-                    "guild_settings": self.guild_settings,
-                    "opted_out_users": sorted(self.opted_out_users),
-                },
-                f,
-                indent=4,
-            )
+        write_json_atomic(
+            SETTINGS_FILE,
+            {
+                "enabled_channels": list(self.enabled_channels),
+                "guild_settings": self.guild_settings,
+                "opted_out_users": sorted(self.opted_out_users),
+            },
+        )
 
     def is_user_opted_out(self, user_id: int) -> bool:
         return user_id in self.opted_out_users
@@ -543,6 +606,14 @@ class MarkovBot(discord.Client):
         user: Optional[discord.User],
         length: int,
     ):
+        if interaction.guild_id is None:
+            await reply(
+                interaction,
+                "This command can only be used in a server.",
+                ephemeral=True,
+            )
+            return
+
         max_allowed_length = 100
         if length < 1 or length > max_allowed_length:
             await reply(
@@ -561,9 +632,9 @@ class MarkovBot(discord.Client):
                 )
                 return
 
-            chain_id = user.id
+            chain_id = user_chain_key(interaction.guild_id, user.id)
             missing_data_message = f"Not enough data to generate a message for {user.name}."
-            data = self.data_handler.get_user_data(user.id)
+            data = self.data_handler.get_user_data(user.id, guild_id=interaction.guild_id)
         else:
             chain_id = interaction.channel_id
             missing_data_message = "Not enough data to generate a message for this channel."
@@ -625,12 +696,14 @@ class MarkovBot(discord.Client):
             message.channel.id,
             message.content,
             timestamp=message.created_at,
+            guild_id=message.guild.id,
         )
 
         if message.channel.id in self.markov_chains:
             self.markov_chains[message.channel.id].add_text(message.content)
-        if message.author.id in self.markov_chains:
-            self.markov_chains[message.author.id].add_text(message.content)
+        user_chain_id = user_chain_key(message.guild.id, message.author.id)
+        if user_chain_id in self.markov_chains:
+            self.markov_chains[user_chain_id].add_text(message.content)
 
 
 if __name__ == "__main__":

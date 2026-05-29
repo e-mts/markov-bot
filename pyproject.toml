@@ -5,7 +5,7 @@ description = "A Discord bot that generates messages using a Markov chain."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "discord.py>=2.0.0",
+    "discord.py>=2.0.0,<3.0.0",
 ]
 
 [tool.uv]

@@ -374,7 +374,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "discord-py", specifier = ">=2.0.0" }]
+requires-dist = [{ name = "discord-py", specifier = ">=2.0.0,<3.0.0" }]
 
 [[package]]
 name = "multidict"

@@ -40,7 +40,13 @@ A Discord bot that generates messages using a Markov chain based on chat history
   > 💡 The bot will keep the channel's history unless explicitly flushed.
 
 - `/settings show` - Show this server's output settings.
-- `/settings output` - Toggle whether generated messages can include mentions, links, or emojis.
+- `/settings output` - Toggle whether generated messages can include pings, links, or emojis.
+  - `mentions` - Set all ping types at once.
+  - `users` - Toggle user pings.
+  - `roles` - Toggle role pings.
+  - `everyone` - Toggle `@here` and `@everyone` pings.
+  - `links` - Toggle links.
+  - `emojis` - Toggle custom and Unicode emojis.
 - `/settings banlist show` - Show banned words and phrases.
 - `/settings banlist add` - Add comma-separated banned words or phrases.
 - `/settings banlist remove` - Remove comma-separated banned words or phrases.
@@ -64,12 +70,13 @@ Channel memory is stored with user and timestamp metadata:
 }
 ```
 
-User memory is stored with channel and timestamp metadata:
+User memory is stored with guild, channel, and timestamp metadata:
 
 ```json
 {
     "user_id": [
         {
+            "guild_id": "guild_id",
             "channel_id": "channel_id",
             "message": "message text",
             "timestamp": "2026-05-29T12:00:00Z"
