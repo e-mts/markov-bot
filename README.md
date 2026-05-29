@@ -48,6 +48,35 @@ A Discord bot that generates messages using a Markov chain based on chat history
 - `/settings flush channel` - Flush the current channel's chat history from the bot.
 - `/settings flush all` - Flush all recorded chat history from the bot.
 
+## Data Files
+
+Channel memory is stored with user and timestamp metadata:
+
+```json
+{
+    "channel_id": [
+        {
+            "user_id": "user_id",
+            "message": "message text",
+            "timestamp": "2026-05-29T12:00:00Z"
+        }
+    ]
+}
+```
+
+User memory is stored with timestamp metadata:
+
+```json
+{
+    "user_id": [
+        {
+            "message": "message text",
+            "timestamp": "2026-05-29T12:00:00Z"
+        }
+    ]
+}
+```
+
 ## Setup
 
 ### Create a Discord Application and Bot

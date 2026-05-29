@@ -622,8 +622,13 @@ class MarkovBot(discord.Client):
             message.channel.id,
             message.author.id,
             message.content,
+            timestamp=message.created_at,
         )
-        self.data_handler.add_user_message(message.author.id, message.content)
+        self.data_handler.add_user_message(
+            message.author.id,
+            message.content,
+            timestamp=message.created_at,
+        )
 
         if message.channel.id in self.markov_chains:
             self.markov_chains[message.channel.id].add_text(message.content)
