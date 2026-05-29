@@ -10,6 +10,7 @@ A Discord bot that generates messages using a Markov chain based on chat history
 - Uses sentence-aware Markov generation with Discord-aware token parsing.
 - Commands to enable/disable the bot in a channel.
 - Admin settings for generated mentions, links, emojis, and banned words.
+- User privacy commands for opting out of bot memory.
 - Flush chat history data.
 
 ## TO-DO
@@ -21,24 +22,31 @@ A Discord bot that generates messages using a Markov chain based on chat history
 
 ## Commands
 
-- `/enable` - Enable the bot in the current channel.
+- `/gen` - Generate a message using recorded channel chat history.
+  - `user` - Generate a message using a user's chat history.
+  - `length` - Generate a message with a modified maximum word length (default is 20, max is 100).
+
+- `/privacy status` - Show whether you are opted in or opted out.
+- `/privacy opt-out` - Stop the bot from recording your messages and delete your user memory.
+- `/privacy opt-in` - Allow the bot to record your future messages again.
+
+- `/settings enable channel` - Enable the bot in the current channel.
 
   > 💡 The bot will only record messages to history while this option is on.
 
-- `/disable channel` - Disable the bot in the current channel.
-- `/disable server` - Disable the bot in all text channels.
+- `/settings disable channel` - Disable the bot in the current channel.
+- `/settings disable server` - Disable the bot in all text channels.
   
   > 💡 The bot will keep the channel's history unless explicitly flushed.
 
 - `/settings show` - Show this server's output settings.
 - `/settings output` - Toggle whether generated messages can include mentions, links, or emojis.
-- `/settings banlist` - Set a comma-separated list of banned words or phrases.
-- `/flush channel` - Flush the current channel's chat history from the bot.
-- `/flush all` - Flush all recorded chat history from the bot.
-- `/generate` - Generate a message using recorded channel chat history.
-  - `user` - Generate a message using a user's chat history.
-  - `length` - Generate a message with a modified maximum word length (default is 20, max is 100).
-- `/gen` - Short alias for `/generate`.
+- `/settings banlist show` - Show banned words and phrases.
+- `/settings banlist add` - Add comma-separated banned words or phrases.
+- `/settings banlist remove` - Remove comma-separated banned words or phrases.
+- `/settings banlist clear` - Clear the banlist.
+- `/settings flush channel` - Flush the current channel's chat history from the bot.
+- `/settings flush all` - Flush all recorded chat history from the bot.
 
 ## Setup
 

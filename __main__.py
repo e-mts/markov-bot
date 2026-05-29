@@ -99,6 +99,16 @@ def normalize_guild_settings(settings: Optional[dict[str, Any]]) -> dict[str, An
     return normalized
 
 
+def normalize_user_ids(user_ids: list[Any]) -> set[int]:
+    normalized = set()
+    for user_id in user_ids:
+        try:
+            normalized.add(int(user_id))
+        except (TypeError, ValueError):
+            continue
+    return normalized
+
+
 def setting_state(enabled: bool) -> str:
     return "on" if enabled else "off"
 
@@ -175,7 +185,21 @@ async def reply(
     )
 
 
-class DisableCommands(app_commands.Group):
+class EnableSettingsCommands(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="enable", description="Enable bot functionality")
+
+    @app_commands.command(name="channel", description="Enable the bot in the current channel")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.guild_only()
+    async def channel(self, interaction: discord.Interaction):
+        bot_name = interaction.client.user.name  # type: ignore[union-attr]
+        bot.enabled_channels.add(interaction.channel_id)
+        bot.save_settings()
+        await reply(interaction, f"{bot_name} enabled in this channel.")
+
+
+class DisableSettingsCommands(app_commands.Group):
     def __init__(self):
         super().__init__(name="disable", description="Disable bot functionality")
 
@@ -203,7 +227,7 @@ class DisableCommands(app_commands.Group):
         await reply(interaction, f"{bot_name} has been disabled in all text channels.")
 
 
-class FlushCommands(app_commands.Group):
+class FlushSettingsCommands(app_commands.Group):
     def __init__(self):
         super().__init__(name="flush", description="Flush bot memories")
 
@@ -224,9 +248,60 @@ class FlushCommands(app_commands.Group):
         await reply(interaction, "Flushed all memories.", ephemeral=True)
 
 
+class BanlistSettingsCommands(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="banlist", description="Configure banned words")
+
+    @app_commands.command(name="show", description="Show banned words for generated output")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.guild_only()
+    async def show(self, interaction: discord.Interaction):
+        settings = bot.get_guild_settings(interaction.guild_id)
+        banned_words = settings["banned_words"]
+        banlist = ", ".join(banned_words) if banned_words else "none"
+        await reply(interaction, f"Banlist: {banlist}", ephemeral=True)
+
+    @app_commands.command(name="add", description="Add banned words or phrases for generated output")
+    @app_commands.describe(words="Comma-separated words or phrases to block.")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.guild_only()
+    async def add(self, interaction: discord.Interaction, words: str):
+        settings = bot.get_guild_settings(interaction.guild_id)
+        banned_words = set(settings["banned_words"])
+        banned_words.update(parse_banned_words(words))
+        settings["banned_words"] = sorted(banned_words)
+        bot.set_guild_settings(interaction.guild_id, settings)
+        await reply(interaction, format_settings(settings), ephemeral=True)
+
+    @app_commands.command(name="remove", description="Remove banned words or phrases")
+    @app_commands.describe(words="Comma-separated words or phrases to remove.")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.guild_only()
+    async def remove(self, interaction: discord.Interaction, words: str):
+        settings = bot.get_guild_settings(interaction.guild_id)
+        banned_words = set(settings["banned_words"])
+        banned_words.difference_update(parse_banned_words(words))
+        settings["banned_words"] = sorted(banned_words)
+        bot.set_guild_settings(interaction.guild_id, settings)
+        await reply(interaction, format_settings(settings), ephemeral=True)
+
+    @app_commands.command(name="clear", description="Clear all banned words")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.guild_only()
+    async def clear_words(self, interaction: discord.Interaction):
+        settings = bot.get_guild_settings(interaction.guild_id)
+        settings["banned_words"] = []
+        bot.set_guild_settings(interaction.guild_id, settings)
+        await reply(interaction, format_settings(settings), ephemeral=True)
+
+
 class SettingsCommands(app_commands.Group):
     def __init__(self):
-        super().__init__(name="settings", description="Configure generated output")
+        super().__init__(name="settings", description="Configure bot settings")
+        self.add_command(EnableSettingsCommands())
+        self.add_command(DisableSettingsCommands())
+        self.add_command(FlushSettingsCommands())
+        self.add_command(BanlistSettingsCommands())
 
     @app_commands.command(name="show", description="Show this server's output settings")
     @app_commands.checks.has_permissions(administrator=True)
@@ -274,39 +349,45 @@ class SettingsCommands(app_commands.Group):
         bot.set_guild_settings(interaction.guild_id, settings)
         await reply(interaction, format_settings(settings), ephemeral=True)
 
-    @app_commands.command(name="banlist", description="Set banned words or phrases for generated output")
-    @app_commands.describe(words="Comma-separated words or phrases. Leave empty to clear the banlist.")
-    @app_commands.checks.has_permissions(administrator=True)
-    @app_commands.guild_only()
-    async def banlist(self, interaction: discord.Interaction, words: Optional[str] = None):
-        settings = bot.get_guild_settings(interaction.guild_id)
-        settings["banned_words"] = parse_banned_words(words)
-        bot.set_guild_settings(interaction.guild_id, settings)
-        await reply(interaction, format_settings(settings), ephemeral=True)
+class PrivacyCommands(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="privacy", description="Manage your bot privacy")
 
+    @app_commands.command(name="status", description="Show whether you are opted out")
+    async def status(self, interaction: discord.Interaction):
+        if bot.is_user_opted_out(interaction.user.id):
+            message = "You are opted out. I will not record your future messages."
+        else:
+            message = "You are opted in. I may record your messages in enabled channels."
+        await reply(interaction, message, ephemeral=True)
 
-@app_commands.command(name="enable", description="Enable the bot in the current channel")
-@app_commands.checks.has_permissions(administrator=True)
-@app_commands.guild_only()
-async def enable(interaction: discord.Interaction):
-    bot_name = interaction.client.user.name  # type: ignore[union-attr]
-    bot.enabled_channels.add(interaction.channel_id)
-    bot.save_settings()
-    await reply(interaction, f"{bot_name} enabled in this channel.")
+    @app_commands.command(name="opt-out", description="Stop the bot from recording your messages")
+    async def opt_out(self, interaction: discord.Interaction):
+        if bot.is_user_opted_out(interaction.user.id):
+            await reply(interaction, "You are already opted out.", ephemeral=True)
+            return
 
+        bot.opt_out_user(interaction.user.id)
+        bot.data_handler.flush_user(interaction.user.id)
+        bot.markov_chains.clear()
+        await reply(
+            interaction,
+            "You are opted out. Your user memory was deleted and future messages will be ignored.",
+            ephemeral=True,
+        )
 
-@app_commands.command(name="generate", description="Generate a message")
-@app_commands.describe(
-    user="Mention a user to generate a message based on their data.",
-    length="Maximum length in words. Default is 20, max is 100.",
-)
-@app_commands.guild_only()
-async def generate(
-    interaction: discord.Interaction,
-    user: Optional[discord.User] = None,
-    length: int = 20,
-):
-    await bot.generate_message(interaction, user=user, length=length)
+    @app_commands.command(name="opt-in", description="Allow the bot to record your messages again")
+    async def opt_in(self, interaction: discord.Interaction):
+        if not bot.is_user_opted_out(interaction.user.id):
+            await reply(interaction, "You are already opted in.", ephemeral=True)
+            return
+
+        bot.opt_in_user(interaction.user.id)
+        await reply(
+            interaction,
+            "You are opted in. Future messages in enabled channels may be recorded.",
+            ephemeral=True,
+        )
 
 
 @app_commands.command(name="gen", description="Generate a message")
@@ -333,12 +414,10 @@ class MarkovBot(discord.Client):
         self.markov_chains = {}
         self.enabled_channels = set()
         self.guild_settings = {}
+        self.opted_out_users = set()
 
-        self.tree.add_command(DisableCommands())
-        self.tree.add_command(FlushCommands())
         self.tree.add_command(SettingsCommands())
-        self.tree.add_command(enable)
-        self.tree.add_command(generate)
+        self.tree.add_command(PrivacyCommands())
         self.tree.add_command(gen)
 
     async def setup_hook(self):
@@ -382,13 +461,18 @@ class MarkovBot(discord.Client):
             with open(SETTINGS_FILE, "r") as f:
                 settings = json.load(f)
         else:
-            settings = {"enabled_channels": [], "guild_settings": {}}
+            settings = {
+                "enabled_channels": [],
+                "guild_settings": {},
+                "opted_out_users": [],
+            }
 
         self.enabled_channels.update(settings.get("enabled_channels", []))
         self.guild_settings = {
             str(guild_id): normalize_guild_settings(guild_settings)
             for guild_id, guild_settings in settings.get("guild_settings", {}).items()
         }
+        self.opted_out_users = normalize_user_ids(settings.get("opted_out_users", []))
         self.save_settings()
 
     def save_settings(self):
@@ -397,10 +481,22 @@ class MarkovBot(discord.Client):
                 {
                     "enabled_channels": list(self.enabled_channels),
                     "guild_settings": self.guild_settings,
+                    "opted_out_users": sorted(self.opted_out_users),
                 },
                 f,
                 indent=4,
             )
+
+    def is_user_opted_out(self, user_id: int) -> bool:
+        return user_id in self.opted_out_users
+
+    def opt_out_user(self, user_id: int):
+        self.opted_out_users.add(user_id)
+        self.save_settings()
+
+    def opt_in_user(self, user_id: int):
+        self.opted_out_users.discard(user_id)
+        self.save_settings()
 
     def get_guild_settings(self, guild_id: Optional[int]) -> dict[str, Any]:
         if guild_id is None:
@@ -457,13 +553,24 @@ class MarkovBot(discord.Client):
             return
 
         if user:
+            if self.is_user_opted_out(user.id):
+                await reply(
+                    interaction,
+                    f"{user.name} has opted out of the bot.",
+                    ephemeral=True,
+                )
+                return
+
             chain_id = user.id
             missing_data_message = f"Not enough data to generate a message for {user.name}."
             data = self.data_handler.get_user_data(user.id)
         else:
             chain_id = interaction.channel_id
             missing_data_message = "Not enough data to generate a message for this channel."
-            data = self.data_handler.get_channel_data(interaction.channel_id)
+            data = self.data_handler.get_channel_data(
+                interaction.channel_id,
+                excluded_user_ids=self.opted_out_users,
+            )
 
         if chain_id not in self.markov_chains:
             if not data:
@@ -504,11 +611,18 @@ class MarkovBot(discord.Client):
         if message.channel.id not in self.enabled_channels:
             return
 
+        if self.is_user_opted_out(message.author.id):
+            return
+
         settings = self.get_guild_settings(message.guild.id)
         if filter_reasons(message.content, settings):
             return
 
-        self.data_handler.add_channel_message(message.channel.id, message.content)
+        self.data_handler.add_channel_message(
+            message.channel.id,
+            message.author.id,
+            message.content,
+        )
         self.data_handler.add_user_message(message.author.id, message.content)
 
         if message.channel.id in self.markov_chains:
