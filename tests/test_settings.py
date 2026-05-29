@@ -14,12 +14,22 @@ SPEC.loader.exec_module(bot_main)
 
 
 class SettingsTests(unittest.TestCase):
-    def test_legacy_mentions_setting_expands_to_granular_settings(self):
-        settings = bot_main.normalize_guild_settings({"allow_mentions": True})
+    def test_default_settings_allow_generated_output(self):
+        settings = bot_main.normalize_guild_settings(None)
 
         self.assertTrue(settings["allow_user_mentions"])
         self.assertTrue(settings["allow_role_mentions"])
         self.assertTrue(settings["allow_everyone_mentions"])
+        self.assertTrue(settings["allow_links"])
+        self.assertTrue(settings["allow_emojis"])
+        self.assertEqual(settings["banned_words"], [])
+
+    def test_legacy_mentions_setting_expands_to_granular_settings(self):
+        settings = bot_main.normalize_guild_settings({"allow_mentions": False})
+
+        self.assertFalse(settings["allow_user_mentions"])
+        self.assertFalse(settings["allow_role_mentions"])
+        self.assertFalse(settings["allow_everyone_mentions"])
 
     def test_granular_mentions_override_legacy_setting(self):
         settings = bot_main.normalize_guild_settings(
@@ -34,7 +44,13 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(settings["allow_everyone_mentions"])
 
     def test_filter_reasons_separates_ping_types(self):
-        settings = bot_main.normalize_guild_settings(None)
+        settings = bot_main.normalize_guild_settings(
+            {
+                "allow_user_mentions": False,
+                "allow_role_mentions": False,
+                "allow_everyone_mentions": False,
+            }
+        )
 
         self.assertEqual(
             bot_main.filter_reasons("<@123> <@&456> @everyone", settings),
@@ -67,7 +83,11 @@ class SettingsTests(unittest.TestCase):
 
         self.assertEqual(
             [command.name for command in settings_command.commands],
-            ["show", "pings", "output", "enable", "disable", "flush", "banlist"],
+            ["show", "pings", "output", "enable", "disable", "flush", "word-filter"],
+        )
+        self.assertEqual(
+            settings_command.to_dict(client.tree)["default_member_permissions"],
+            bot_main.discord.Permissions(administrator=True).value,
         )
 
         pings_command = next(

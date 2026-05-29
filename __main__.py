@@ -21,9 +21,9 @@ DISCORD_MESSAGE_LIMIT = 2000
 MAX_GENERATION_RETRIES = 10
 
 DEFAULT_GUILD_SETTINGS = {
-    "allow_user_mentions": False,
-    "allow_role_mentions": False,
-    "allow_everyone_mentions": False,
+    "allow_user_mentions": True,
+    "allow_role_mentions": True,
+    "allow_everyone_mentions": True,
     "allow_links": True,
     "allow_emojis": True,
     "banned_words": [],
@@ -137,14 +137,14 @@ def setting_state(enabled: bool) -> str:
 
 def format_settings(settings: dict[str, Any]) -> str:
     banned_words = settings["banned_words"]
-    banlist = ", ".join(banned_words) if banned_words else "none"
+    word_filter = ", ".join(banned_words) if banned_words else "none"
     return (
         f"User mentions: {setting_state(settings['allow_user_mentions'])}\n"
         f"Role mentions: {setting_state(settings['allow_role_mentions'])}\n"
         f"@here/@everyone: {setting_state(settings['allow_everyone_mentions'])}\n"
         f"Links: {setting_state(settings['allow_links'])}\n"
         f"Emojis: {setting_state(settings['allow_emojis'])}\n"
-        f"Banlist: {banlist}"
+        f"Word filter: {word_filter}"
     )
 
 
@@ -181,7 +181,7 @@ def filter_reasons(message: str, settings: dict[str, Any]) -> list[str]:
     ):
         reasons.append("emojis")
     if contains_banned_word(message, settings["banned_words"]):
-        reasons.append("banlist")
+        reasons.append("word filter")
     return reasons
 
 
@@ -283,21 +283,21 @@ class FlushSettingsCommands(app_commands.Group):
         await reply(interaction, "Flushed all memories.", ephemeral=True)
 
 
-class BanlistSettingsCommands(app_commands.Group):
+class WordFilterSettingsCommands(app_commands.Group):
     def __init__(self):
-        super().__init__(name="banlist", description="Configure banned words")
+        super().__init__(name="word-filter", description="Configure filtered words")
 
-    @app_commands.command(name="show", description="Show banned words for generated output")
+    @app_commands.command(name="show", description="Show filtered words for generated output")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guild_only()
     async def show(self, interaction: discord.Interaction):
         settings = bot.get_guild_settings(interaction.guild_id)
         banned_words = settings["banned_words"]
-        banlist = ", ".join(banned_words) if banned_words else "none"
-        await reply(interaction, f"Banlist: {banlist}", ephemeral=True)
+        word_filter = ", ".join(banned_words) if banned_words else "none"
+        await reply(interaction, f"Word filter: {word_filter}", ephemeral=True)
 
-    @app_commands.command(name="add", description="Add banned words or phrases for generated output")
-    @app_commands.describe(words="Comma-separated words or phrases to block.")
+    @app_commands.command(name="add", description="Add words or phrases to the output filter")
+    @app_commands.describe(words="Comma-separated words or phrases to filter.")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guild_only()
     async def add(self, interaction: discord.Interaction, words: str):
@@ -308,7 +308,7 @@ class BanlistSettingsCommands(app_commands.Group):
         bot.set_guild_settings(interaction.guild_id, settings)
         await reply(interaction, format_settings(settings), ephemeral=True)
 
-    @app_commands.command(name="remove", description="Remove banned words or phrases")
+    @app_commands.command(name="remove", description="Remove words or phrases from the output filter")
     @app_commands.describe(words="Comma-separated words or phrases to remove.")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guild_only()
@@ -320,7 +320,7 @@ class BanlistSettingsCommands(app_commands.Group):
         bot.set_guild_settings(interaction.guild_id, settings)
         await reply(interaction, format_settings(settings), ephemeral=True)
 
-    @app_commands.command(name="clear", description="Clear all banned words")
+    @app_commands.command(name="clear", description="Clear the word filter")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guild_only()
     async def clear_words(self, interaction: discord.Interaction):
@@ -332,11 +332,15 @@ class BanlistSettingsCommands(app_commands.Group):
 
 class SettingsCommands(app_commands.Group):
     def __init__(self):
-        super().__init__(name="settings", description="Configure bot settings")
+        super().__init__(
+            name="settings",
+            description="Configure bot settings",
+            default_permissions=discord.Permissions(administrator=True),
+        )
         self.add_command(EnableSettingsCommands())
         self.add_command(DisableSettingsCommands())
         self.add_command(FlushSettingsCommands())
-        self.add_command(BanlistSettingsCommands())
+        self.add_command(WordFilterSettingsCommands())
 
     @app_commands.command(name="show", description="Show this server's output settings")
     @app_commands.checks.has_permissions(administrator=True)

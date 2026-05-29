@@ -9,7 +9,7 @@ A Discord bot that generates messages using a Markov chain based on chat history
 - Generates messages based on channel or user chat history.
 - Uses sentence-aware Markov generation with Discord-aware token parsing.
 - Commands to enable/disable the bot in a channel.
-- Admin settings for generated mentions, links, emojis, and banned words.
+- Admin settings for generated mentions, links, emojis, and word filters.
 - User privacy commands for opting out of bot memory.
 - Flush chat history data.
 
@@ -48,10 +48,10 @@ A Discord bot that generates messages using a Markov chain based on chat history
 - `/settings output` - Toggle whether generated messages can include links or emojis.
   - `links` - Toggle links.
   - `emojis` - Toggle custom and Unicode emojis.
-- `/settings banlist show` - Show banned words and phrases.
-- `/settings banlist add` - Add comma-separated banned words or phrases.
-- `/settings banlist remove` - Remove comma-separated banned words or phrases.
-- `/settings banlist clear` - Clear the banlist.
+- `/settings word-filter show` - Show filtered words and phrases.
+- `/settings word-filter add` - Add comma-separated words or phrases to the output filter.
+- `/settings word-filter remove` - Remove words or phrases from the output filter.
+- `/settings word-filter clear` - Clear the word filter.
 - `/settings flush channel` - Flush the current channel's chat history from the bot.
 - `/settings flush all` - Flush all recorded chat history from the bot.
 
