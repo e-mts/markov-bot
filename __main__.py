@@ -345,7 +345,7 @@ class SettingsCommands(app_commands.Group):
         settings = bot.get_guild_settings(interaction.guild_id)
         await reply(interaction, format_settings(settings), ephemeral=True)
 
-    @app_commands.command(name="output", description="Toggle generated output filters")
+    @app_commands.command(name="pings", description="Toggle generated ping filters")
     @app_commands.rename(
         user_mentions="users",
         role_mentions="roles",
@@ -356,27 +356,18 @@ class SettingsCommands(app_commands.Group):
         user_mentions="Allow generated messages to mention users.",
         role_mentions="Allow generated messages to mention roles.",
         everyone_mentions="Allow generated messages to use @here or @everyone.",
-        links="Allow generated messages to include links.",
-        emojis="Allow generated messages to include custom or Unicode emojis.",
     )
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.guild_only()
-    async def output(
+    async def pings(
         self,
         interaction: discord.Interaction,
         mentions: Optional[bool] = None,
         user_mentions: Optional[bool] = None,
         role_mentions: Optional[bool] = None,
         everyone_mentions: Optional[bool] = None,
-        links: Optional[bool] = None,
-        emojis: Optional[bool] = None,
     ):
         settings = bot.get_guild_settings(interaction.guild_id)
-        updates = {
-            "allow_links": links,
-            "allow_emojis": emojis,
-        }
-
         changed = False
         if mentions is not None:
             for key in (
@@ -398,6 +389,37 @@ class SettingsCommands(app_commands.Group):
                 settings[key] = value
                 changed = True
 
+        if not changed:
+            await reply(
+                interaction,
+                "No settings changed. Provide at least one toggle.",
+                ephemeral=True,
+            )
+            return
+
+        bot.set_guild_settings(interaction.guild_id, settings)
+        await reply(interaction, format_settings(settings), ephemeral=True)
+
+    @app_commands.command(name="output", description="Toggle generated output filters")
+    @app_commands.describe(
+        links="Allow generated messages to include links.",
+        emojis="Allow generated messages to include custom or Unicode emojis.",
+    )
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.guild_only()
+    async def output(
+        self,
+        interaction: discord.Interaction,
+        links: Optional[bool] = None,
+        emojis: Optional[bool] = None,
+    ):
+        settings = bot.get_guild_settings(interaction.guild_id)
+        updates = {
+            "allow_links": links,
+            "allow_emojis": emojis,
+        }
+
+        changed = False
         for key, value in updates.items():
             if value is not None:
                 settings[key] = value

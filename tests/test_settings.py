@@ -57,6 +57,39 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(allowed_mentions.everyone)
         self.assertFalse(allowed_mentions.replied_user)
 
+    def test_settings_commands_split_pings_from_output(self):
+        client = bot_main.MarkovBot()
+        settings_command = next(
+            command
+            for command in client.tree.get_commands()
+            if command.name == "settings"
+        )
+
+        self.assertEqual(
+            [command.name for command in settings_command.commands],
+            ["show", "pings", "output", "enable", "disable", "flush", "banlist"],
+        )
+
+        pings_command = next(
+            command
+            for command in settings_command.commands
+            if command.name == "pings"
+        )
+        output_command = next(
+            command
+            for command in settings_command.commands
+            if command.name == "output"
+        )
+
+        self.assertEqual(
+            [option["name"] for option in pings_command.to_dict(client.tree)["options"]],
+            ["mentions", "users", "roles", "everyone"],
+        )
+        self.assertEqual(
+            [option["name"] for option in output_command.to_dict(client.tree)["options"]],
+            ["links", "emojis"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

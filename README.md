@@ -40,11 +40,12 @@ A Discord bot that generates messages using a Markov chain based on chat history
   > 💡 The bot will keep the channel's history unless explicitly flushed.
 
 - `/settings show` - Show this server's output settings.
-- `/settings output` - Toggle whether generated messages can include pings, links, or emojis.
+- `/settings pings` - Toggle whether generated messages can ping users, roles, `@here`, or `@everyone`.
   - `mentions` - Set all ping types at once.
   - `users` - Toggle user pings.
   - `roles` - Toggle role pings.
   - `everyone` - Toggle `@here` and `@everyone` pings.
+- `/settings output` - Toggle whether generated messages can include links or emojis.
   - `links` - Toggle links.
   - `emojis` - Toggle custom and Unicode emojis.
 - `/settings banlist show` - Show banned words and phrases.
