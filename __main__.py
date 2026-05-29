@@ -236,7 +236,7 @@ class FlushSettingsCommands(app_commands.Group):
     @app_commands.guild_only()
     async def channel(self, interaction: discord.Interaction):
         bot.data_handler.flush_channel(interaction.channel_id)
-        bot.markov_chains.pop(interaction.channel_id, None)
+        bot.markov_chains.clear()
         await reply(interaction, "Flushed all memories for this channel.", ephemeral=True)
 
     @app_commands.command(name="all", description="Flush all bot memories")
@@ -614,10 +614,6 @@ class MarkovBot(discord.Client):
         if self.is_user_opted_out(message.author.id):
             return
 
-        settings = self.get_guild_settings(message.guild.id)
-        if filter_reasons(message.content, settings):
-            return
-
         self.data_handler.add_channel_message(
             message.channel.id,
             message.author.id,
@@ -626,6 +622,7 @@ class MarkovBot(discord.Client):
         )
         self.data_handler.add_user_message(
             message.author.id,
+            message.channel.id,
             message.content,
             timestamp=message.created_at,
         )

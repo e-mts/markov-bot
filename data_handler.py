@@ -86,17 +86,32 @@ class DataHandler:
         return messages
 
     def flush_channel(self, channel_id):
+        str_id = str(channel_id)
+
         data = self._read_json(self.channel_file)
-        data.pop(str(channel_id), None)
+        data.pop(str_id, None)
         self._write_json(self.channel_file, data)
 
-    def add_user_message(self, user_id, message, timestamp=None):
+        user_data = self._read_json(self.user_file)
+        for user_id, records in user_data.items():
+            user_data[user_id] = [
+                record
+                for record in records
+                if not (
+                    isinstance(record, dict)
+                    and str(record.get("channel_id")) == str_id
+                )
+            ]
+        self._write_json(self.user_file, user_data)
+
+    def add_user_message(self, user_id, channel_id, message, timestamp=None):
         data = self._read_json(self.user_file)
         str_id = str(user_id)
         if str_id not in data:
             data[str_id] = []
         data[str_id].append(
             {
+                "channel_id": str(channel_id),
                 "message": message,
                 "timestamp": self._normalize_timestamp(timestamp),
             }

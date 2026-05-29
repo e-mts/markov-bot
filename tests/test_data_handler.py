@@ -36,13 +36,14 @@ class DataHandlerTests(unittest.TestCase):
             handler = DataHandler(data_dir=data_dir)
             timestamp = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
 
-            handler.add_user_message(10, "user memory", timestamp=timestamp)
+            handler.add_user_message(10, 123, "user memory", timestamp=timestamp)
 
             self.assertEqual(handler.get_user_data(10), ["user memory"])
             stored = json.loads(handler.user_file.read_text())
             self.assertEqual(
                 stored["10"][0],
                 {
+                    "channel_id": "123",
                     "message": "user memory",
                     "timestamp": "2026-05-29T12:00:00Z",
                 },
@@ -61,7 +62,7 @@ class DataHandlerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as data_dir:
             handler = DataHandler(data_dir=data_dir)
 
-            handler.add_user_message(10, "user memory")
+            handler.add_user_message(10, 123, "user memory")
             handler.add_channel_message(123, 10, "remove me")
             handler.add_channel_message(123, 20, "keep me")
 
@@ -69,6 +70,22 @@ class DataHandlerTests(unittest.TestCase):
 
             self.assertEqual(handler.get_user_data(10), [])
             self.assertEqual(handler.get_channel_data(123), ["keep me"])
+
+    def test_flush_channel_removes_matching_user_records(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            handler = DataHandler(data_dir=data_dir)
+
+            handler.add_channel_message(123, 10, "channel memory")
+            handler.add_user_message(10, 123, "remove me")
+            handler.add_user_message(10, 456, "keep me")
+            user_data = handler._read_json(handler.user_file)
+            user_data["10"].append("legacy")
+            handler._write_json(handler.user_file, user_data)
+
+            handler.flush_channel(123)
+
+            self.assertEqual(handler.get_channel_data(123), [])
+            self.assertEqual(handler.get_user_data(10), ["keep me", "legacy"])
 
 
 if __name__ == "__main__":

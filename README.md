@@ -64,12 +64,13 @@ Channel memory is stored with user and timestamp metadata:
 }
 ```
 
-User memory is stored with timestamp metadata:
+User memory is stored with channel and timestamp metadata:
 
 ```json
 {
     "user_id": [
         {
+            "channel_id": "channel_id",
             "message": "message text",
             "timestamp": "2026-05-29T12:00:00Z"
         }
