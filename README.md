@@ -7,30 +7,84 @@ A Discord bot that generates messages using a Markov chain based on chat history
 ## Features
 
 - Generates messages based on channel or user chat history.
+- Uses sentence-aware Markov generation with Discord-aware token parsing.
 - Commands to enable/disable the bot in a channel.
+- Admin settings for generated mentions, links, emojis, and banned words.
+- User privacy commands for opting out of bot memory.
 - Flush chat history data.
 
 ## TO-DO
 
-- [ ] Let the bot parse emojis properly
-- [ ] Give the bot more admin settings to disable posting links or emojis
-- [ ] Make the generate command shorter
-- [ ] Make sure the bot responds to all interactions appropriately. Cleaner error handling.
+- [x] Let the bot parse emojis properly
+- [x] Give the bot more admin settings to disable posting links or emojis
+- [x] Make the generate command shorter
+- [x] Make sure the bot responds to all interactions appropriately. Cleaner error handling.
 
 ## Commands
 
-- `/enable` - Enable the bot in the current channel.
+- `/gen` - Generate a message using recorded channel chat history.
+  - `user` - Generate a message using a user's chat history.
+  - `length` - Generate a message with a modified maximum word length (default is 20, max is 100).
+
+- `/privacy status` - Show whether you are opted in or opted out.
+- `/privacy opt-out` - Stop the bot from recording your messages and delete your user memory.
+- `/privacy opt-in` - Allow the bot to record your future messages again.
+
+- `/settings enable channel` - Enable the bot in the current channel.
 
   > 💡 The bot will only record messages to history while this option is on.
 
-- `/disable` - Disable the bot in the current channel/server.
+- `/settings disable channel` - Disable the bot in the current channel.
+- `/settings disable server` - Disable the bot in all text channels.
   
-  > 💡 The bot will keep the channel's history unless explicity flushed.
+  > 💡 The bot will keep the channel's history unless explicitly flushed.
 
-- `/flush` - Flush the current channel/server chat history from the bot.
-- `/generate` - Generate a message using all recorded chat history.
-  - `/generate user` - Generates a message using a user's chat history.
-  - `/generate length` - Generate a message with a modified Markov chain length (default is 20, max is 100).
+- `/settings show` - Show this server's output settings.
+- `/settings pings` - Toggle whether generated messages can ping users, roles, `@here`, or `@everyone`.
+  - `mentions` - Set all ping types at once.
+  - `users` - Toggle user pings.
+  - `roles` - Toggle role pings.
+  - `everyone` - Toggle `@here` and `@everyone` pings.
+- `/settings output` - Toggle whether generated messages can include links or emojis.
+  - `links` - Toggle links.
+  - `emojis` - Toggle custom and Unicode emojis.
+- `/settings banlist show` - Show banned words and phrases.
+- `/settings banlist add` - Add comma-separated banned words or phrases.
+- `/settings banlist remove` - Remove comma-separated banned words or phrases.
+- `/settings banlist clear` - Clear the banlist.
+- `/settings flush channel` - Flush the current channel's chat history from the bot.
+- `/settings flush all` - Flush all recorded chat history from the bot.
+
+## Data Files
+
+Channel memory is stored with user and timestamp metadata:
+
+```json
+{
+    "channel_id": [
+        {
+            "user_id": "user_id",
+            "message": "message text",
+            "timestamp": "2026-05-29T12:00:00Z"
+        }
+    ]
+}
+```
+
+User memory is stored with guild, channel, and timestamp metadata:
+
+```json
+{
+    "user_id": [
+        {
+            "guild_id": "guild_id",
+            "channel_id": "channel_id",
+            "message": "message text",
+            "timestamp": "2026-05-29T12:00:00Z"
+        }
+    ]
+}
+```
 
 ## Setup
 
@@ -49,24 +103,27 @@ A Discord bot that generates messages using a Markov chain based on chat history
     - Under the "OAuth2" tab, navigate to "URL Generator".
     - Select the following scopes:
         - `bot`
+        - `applications.commands`
     - Under "Bot Permissions", select:
         - `Send Messages`
         - `Read Message History`
-        - `Manage Messages` (if needed for flushing data)
     - Use the generated URL to invite the bot to your Discord server.
+
+4. **Enable Privileged Gateway Intents**:
+    - In the "Bot" tab, enable `Message Content Intent`.
 
 ### Starting the Bot
 
 1. Clone the repository.
-2. Install dependencies.
+2. Install dependencies with uv.
 
      ```bash
-      pip install -r requirements.txt
+      uv sync
      ```
 
 3. Configure the bot token.
 
-    - Make a `config.json` file in the project's directory with the following structure:
+    - Set `DISCORD_TOKEN` in the environment, or make a `config.json` file in the project's directory with the following structure:
 
         ```json
         {
@@ -74,8 +131,14 @@ A Discord bot that generates messages using a Markov chain based on chat history
         }
         ```
 
-4. Run ``__main.py__``. If you're hosting this yourself I'm assuming you know how to run it detached. If not then look it up (and please set up a virtual environment).
+4. Run `uv run python __main__.py`. If you're hosting this yourself I'm assuming you know how to run it detached. If not then look it up.
 5. Invite the bot to your server.
+
+## Testing
+
+```bash
+uv run python -m unittest discover -s tests
+```
 
 ## License
 
