@@ -69,10 +69,10 @@ A Discord bot that generates messages using a Markov chain based on chat history
 ### Starting the Bot
 
 1. Clone the repository.
-2. Install dependencies.
+2. Install dependencies with uv.
 
      ```bash
-      pip install -r requirements.txt
+      uv sync
      ```
 
 3. Configure the bot token.
@@ -85,8 +85,14 @@ A Discord bot that generates messages using a Markov chain based on chat history
         }
         ```
 
-4. Run `python3 __main__.py`. If you're hosting this yourself I'm assuming you know how to run it detached. If not then look it up (and please set up a virtual environment).
+4. Run `uv run python __main__.py`. If you're hosting this yourself I'm assuming you know how to run it detached. If not then look it up.
 5. Invite the bot to your server.
+
+## Testing
+
+```bash
+uv run python -m unittest discover -s tests
+```
 
 ## License
 
