@@ -7,13 +7,14 @@ A Discord bot that generates messages using a Markov chain based on chat history
 ## Features
 
 - Generates messages based on channel or user chat history.
+- Uses sentence-aware Markov generation with Discord-aware token parsing.
 - Commands to enable/disable the bot in a channel.
 - Admin settings for generated mentions, links, emojis, and banned words.
 - Flush chat history data.
 
 ## TO-DO
 
-- [ ] Let the bot parse emojis properly
+- [x] Let the bot parse emojis properly
 - [x] Give the bot more admin settings to disable posting links or emojis
 - [x] Make the generate command shorter
 - [x] Make sure the bot responds to all interactions appropriately. Cleaner error handling.
